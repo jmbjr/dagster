@@ -50,7 +50,7 @@ from .logger_definition import LoggerDefinition
 from .node_definition import NodeDefinition
 from .output import OutputDefinition, OutputMapping
 from .preset import PresetDefinition
-from .resource_requirement import ResourceRequirement
+from .resource_requirement import ResourceAddable, ResourceRequirement
 from .solid_container import create_execution_structure, validate_dependency_dict
 from .version_strategy import VersionStrategy
 
@@ -123,7 +123,7 @@ def _create_adjacency_lists(
     return (forward_edges, backward_edges)
 
 
-class GraphDefinition(NodeDefinition):
+class GraphDefinition(NodeDefinition, ResourceAddable):
     """Defines a Dagster graph.
 
     A graph is made up of
@@ -484,6 +484,20 @@ class GraphDefinition(NodeDefinition):
     def node_names(self):
         return list(self._node_dict.keys())
 
+    def with_resources(
+        self, resource_defs: Mapping[str, ResourceDefinition]
+    ) -> Union["PendingJobDefinition", "JobDefinition"]:
+        resource_defs = merge_dicts({"io_manager": default_job_io_manager}, resource_defs)
+        if all(
+            [
+                requirement.requirement_satisfied(resource_defs, error_if_unsatisfied=False)
+                for requirement in self.get_resource_requirements()
+            ]
+        ):
+            return self.to_job(resource_defs=resource_defs)
+        else:
+            return self.to_pending_job(resource_defs=resource_defs)
+
     def to_job(
         self,
         name: Optional[str] = None,
@@ -695,7 +709,7 @@ class GraphDefinition(NodeDefinition):
         """
         from .executor_definition import ExecutorDefinition, multi_or_in_process_executor
         from .partition import PartitionedConfig, PartitionsDefinition
-        from .pending_job_definition import PendingJobDefinition
+        from .pending_job_definition import PendingJobDefinition  # type: ignore[attr-defined]
 
         job_name = check_valid_name(name or self.name)
 
@@ -745,7 +759,7 @@ class GraphDefinition(NodeDefinition):
             description=description or self.description,
             graph_def=self,
             resource_defs=resource_defs,
-            loggers=logger_defs,
+            loggers=check.opt_dict_param(logger_defs, "logger_defs"),
             executor_def=executor_def,
             config_mapping=config_mapping,
             partitioned_config=partitioned_config,
