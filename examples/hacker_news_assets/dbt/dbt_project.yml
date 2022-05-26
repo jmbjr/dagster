@@ -33,5 +33,8 @@ models:
   hacker_news_dbt:
     materialized: table
 
+    activity_analytics:
+      +schema: activity_analytics
+
 seeds:
   quote_columns: false

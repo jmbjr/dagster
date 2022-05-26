@@ -648,3 +648,39 @@ def _validate_resource_reqs_for_asset_group(
                 "AssetGroup is missing required resource keys for resource '"
                 f"{resource_key}'. Missing resource keys: {missing_resource_keys}"
             )
+
+
+def assets_from_package_module(
+    package_module: ModuleType,
+    resource_defs: Optional[Mapping[str, ResourceDefinition]] = None,
+    executor_def: Optional[ExecutorDefinition] = None,
+    extra_source_assets: Optional[Sequence[SourceAsset]] = None,
+    prefix: Optional[str] = None,
+) -> Sequence[AssetsDefinition]:
+    """
+    Constructs an list of asset defs that includes all asset definitions and source assets in all
+    sub-modules of the given package module.
+
+    A package module is the result of importing a package.
+
+    Args:
+        package_module (ModuleType): The package module to looks for assets inside.
+        resource_defs (Optional[Mapping[str, ResourceDefinition]]): A dictionary of resource
+            definitions to include on the returned asset group.
+        executor_def (Optional[ExecutorDefinition]): An executor to include on the returned
+            asset group.
+        extra_source_assets (Optional[Sequence[SourceAsset]]): Source assets to include in the
+            group in addition to the source assets found in the package.
+
+    Returns:
+        Sequence[AssetsDefinition]: A list of all assets in the package.
+    """
+    group = AssetGroup.from_modules(
+        _find_modules_in_package(package_module),
+        resource_defs=resource_defs,
+        executor_def=executor_def,
+        extra_source_assets=extra_source_assets,
+    )
+    if prefix:
+        group = group.prefixed(prefix)
+    return group.assets + group.source_assets

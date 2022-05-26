@@ -25,6 +25,7 @@ from dagster.core.asset_defs import (
     AssetsDefinition,
     SourceAsset,
     asset,
+    assets_from_package_module,
     build_assets_job,
     multi_asset,
 )
